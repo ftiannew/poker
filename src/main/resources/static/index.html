@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pao De Kuai - Playing Desk</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #2c5530, #1a3d1f);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .game-container {
+            width: 100%;
+            max-width: 1200px;
+            height: 800px;
+            position: relative;
+        }
+        
+        /* Game Table */
+        .game-table {
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, #4a7c59, #2d5a3c);
+            border-radius: 50%;
+            position: relative;
+            box-shadow: 0 0 50px rgba(0, 0, 0, 0.5);
+            border: 8px solid #8b5a2b;
+        }
+        
+        /* Player Positions */
+        .player-position {
+            position: absolute;
+            width: 200px;
+            text-align: center;
+        }
+        
+        .player-top {
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        .player-left {
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        
+        .player-right {
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        
+        .player-bottom {
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        .player-info {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .current-player .player-info {
+            background: rgba(255, 215, 0, 0.9);
+            border: 2px solid #ff6b35;
+        }
+        
+        /* Card Hands */
+        .hand {
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+        
+        .card {
+            width: 60px;
+            height: 80px;
+            background: white;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 14px;
+            font-weight: bold;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        }
+        
+        .card.selected {
+            transform: translateY(-10px);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
+            border: 3px solid #ff6b35;
+        }
+        
+        .suit-heart, .suit-diamond {
+            color: #e74c3c;
+        }
+        
+        .suit-club, .suit-spade {
+            color: #2c3e50;
+        }
+        
+        /* Center Game Area */
+        .center-area {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 300px;
+            height: 200px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .center-area h2 {
+            color: white;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        .played-cards {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 280px;
+        }
+        
+        .played-card {
+            width: 40px;
+            height: 55px;
+            background: white;
+            border-radius: 6px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 12px;
+            font-weight: bold;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        /* Controls */
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px 20px;
+            border-radius: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+        
+        .btn:hover {
+            background: #45a049;
+        }
+        
+        .btn:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+        }
+        
+        /* Status Messages */
+        .status-bar {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+        }
+        
+        /* AI Player Cards (faced down) */
+        .ai-card {
+            width: 60px;
+            height: 80px;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-weight: bold;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .game-container {
+                height: 600px;
+            }
+            
+            .card {
+                width: 45px;
+                height: 60px;
+                font-size: 12px;
+            }
+            
+            .ai-card {
+                width: 45px;
+                height: 60px;
+            }
+            
+            .player-position {
+                width: 150px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="game-table">
+            <!-- Top Player (AI) -->
+            <div class="player-position player-top" id="player-top">
+                <div class="player-info" id="player-top-info">AI Player 1</div>
+                <div class="hand" id="hand-top"></div>
+            </div>
+            
+            <!-- Left Player (AI) -->
+            <div class="player-position player-left" id="player-left">
+                <div class="player-info" id="player-left-info">AI Player 2</div>
+                <div class="hand" id="hand-left"></div>
+            </div>
+            
+            <!-- Right Player (AI - optional for 4 players) -->
+            <div class="player-position player-right" id="player-right" style="display: none;">
+                <div class="player-info" id="player-right-info">AI Player 3</div>
+                <div class="hand" id="hand-right"></div>
+            </div>
+            
+            <!-- Bottom Player (Human) -->
+            <div class="player-position player-bottom" id="player-bottom">
+                <div class="player-info" id="player-bottom-info">You</div>
+                <div class="hand" id="hand-bottom"></div>
+            </div>
+            
+            <!-- Center Game Area -->
+            <div class="center-area">
+                <h2>Pao De Kuai</h2>
+                <div class="played-cards" id="played-cards"></div>
+                <div id="current-turn" style="color: white; margin-top: 10px;"></div>
+            </div>
+            
+            <!-- Status Bar -->
+            <div class="status-bar" id="status-bar" style="display: none;">Loading...</div>
+            
+            <!-- Game Controls -->
+            <div class="controls" id="game-controls" style="display: none;">
+                <button class="btn" id="play-btn" disabled>Play Selected</button>
+                <button class="btn" id="pass-btn">Pass</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+    
+    <script>
+        // Game state
+        let stompClient = null;
+        let currentGameState = null;
+        let selectedCards = new Set();
+        let myPlayerId = null;
+
+        // DOM Elements
+        const playerPositions = {
+            top: { info: document.getElementById('player-top-info'), hand: document.getElementById('hand-top') },
+            left: { info: document.getElementById('player-left-info'), hand: document.getElementById('hand-left') },
+            right: { info: document.getElementById('player-right-info'), hand: document.getElementById('hand-right') },
+            bottom: { info: document.getElementById('player-bottom-info'), hand: document.getElementById('hand-bottom') }
+        };
+        
+        const playedCardsEl = document.getElementById('played-cards');
+        const currentTurnEl = document.getElementById('current-turn');
+        const statusBarEl = document.getElementById('status-bar');
+        const gameControlsEl = document.getElementById('game-controls');
+        const playBtn = document.getElementById('play-btn');
+        const passBtn = document.getElementById('pass-btn');
+
+        // Initialize connection screen
+        function showConnectionScreen() {
+            // Remove any existing overlay first
+            const existingOverlay = document.getElementById('connection-overlay');
+            if (existingOverlay) {
+                existingOverlay.remove();
+            }
+            
+            // Create connection overlay
+            const overlay = document.createElement('div');
+            overlay.id = 'connection-overlay';
+            overlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.8);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 1000;
+            `;
+            
+            overlay.innerHTML = `
+                <div style="background: white; padding: 40px; border-radius: 20px; text-align: center; max-width: 500px;">
+                    <h1 style="color: #2c5530; margin-bottom: 20px;">Pao De Kuai</h1>
+                    <div style="margin: 20px 0;">
+                        <label>Your Name:</label><br>
+                        <input type="text" id="player-name" value="Human Player" style="padding: 10px; margin: 10px; width: 200px; font-size: 16px;">
+                    </div>
+                    <div style="margin: 20px 0;">
+                        <button onclick="start3PlayerGame()" style="background: #4CAF50; color: white; padding: 15px 30px; margin: 10px; border: none; border-radius: 10px; font-size: 18px; cursor: pointer;">
+                            Start 3-Player Game<br>(You + 2 AI)
+                        </button>
+                        <button onclick="start4PlayerGame()" style="background: #2196F3; color: white; padding: 15px 30px; margin: 10px; border: none; border-radius: 10px; font-size: 18px; cursor: pointer;">
+                            Start 4-Player Game<br>(You + 3 AI)
+                        </button>
+                    </div>
+                    <div id="connection-status" style="margin-top: 20px; padding: 10px; border-radius: 5px;"></div>
+                </div>
+            `;
+            
+            document.body.appendChild(overlay);
+            console.log('DEBUG: Connection overlay created');
+        }
+
+        function hideConnectionScreen() {
+            console.log('DEBUG: Hiding connection screen');
+            const overlay = document.getElementById('connection-overlay');
+            if (overlay) {
+                console.log('DEBUG: Found overlay, hiding it');
+                overlay.style.display = 'none';
+                // Also add hidden class for extra safety
+                overlay.classList.add('hidden');
+            } else {
+                console.log('DEBUG: Overlay not found');
+                // Try to find by other means
+                const overlays = document.querySelectorAll('div[style*="z-index: 1000"]');
+                overlays.forEach(el => {
+                    el.style.display = 'none';
+                    el.classList.add('hidden');
+                });
+            }
+            
+            // Show game elements
+            statusBarEl.style.display = 'block';
+            gameControlsEl.style.display = 'flex';
+            
+            console.log('DEBUG: Connection screen hidden');
+        }
+
+        function start3PlayerGame() {
+            const playerName = document.getElementById('player-name').value || 'Human Player';
+            connectAndStartGame(playerName, 3);
+        }
+        
+        function start4PlayerGame() {
+            const playerName = document.getElementById('player-name').value || 'Human Player';
+            connectAndStartGame(playerName, 4);
+        }
+
+        function connectAndStartGame(playerName, totalPlayers) {
+            const statusEl = document.getElementById('connection-status');
+            statusEl.innerHTML = '<div style="background: #d1ecf1; color: #0c5460; padding: 10px; border-radius: 5px;">Connecting to server...</div>';
+            
+            // Connect to WebSocket
+            const serverIp = window.location.hostname;
+            const backendUrl = serverIp + ':8083';
+            const socket = new SockJS('http://' + backendUrl + '/game');
+            stompClient = Stomp.over(socket);
+            
+            stompClient.connect({}, function(frame) {
+                statusEl.innerHTML = '<div style="background: #d4edda; color: #155724; padding: 10px; border-radius: 5px;">Connected! Starting game...</div>';
+                
+                // Subscribe to game events
+                setupWebSocketSubscriptions();
+                
+                // Create players
+                const players = [];
+                myPlayerId = 'human-' + generateId();
+                players.push({ id: myPlayerId, name: playerName });
+                
+                // Add AI players
+                const aiCount = totalPlayers - 1;
+                for (let i = 1; i <= aiCount; i++) {
+                    players.push({ 
+                        id: 'ai-' + i + '-' + generateId(), 
+                        name: `AI Player ${i}`,
+                        isAI: true
+                    });
+                }
+                
+                // Start direct game
+                stompClient.send('/app/game/start-direct', {}, JSON.stringify(players));
+                
+            }, function(error) {
+                statusEl.innerHTML = `<div style="background: #f8d7da; color: #721c24; padding: 10px; border-radius: 5px;">Connection failed: ${error}</div>`;
+            });
+        }
+
+        function setupWebSocketSubscriptions() {
+                stompClient.subscribe('/topic/game.started', function(message) {
+                    console.log('DEBUG: Game started message received');
+                    currentGameState = JSON.parse(message.body);
+                    console.log('DEBUG: Parsed game state - players:', currentGameState.players.length);
+                    hideConnectionScreen();
+                    renderGameBoard();
+                    updateGameDisplay();
+                    showGameControls();
+                });
+            
+            stompClient.subscribe('/topic/game.updated', function(message) {
+                currentGameState = JSON.parse(message.body);
+                updateGameDisplay();
+            });
+            
+            stompClient.subscribe('/topic/game.ended', function(message) {
+                const winnerId = message.body;
+                const winner = currentGameState.players.find(p => p.id === winnerId);
+                showStatus(`Game ended! Winner: ${winner?.name || 'Unknown'}`, 'success');
+                setTimeout(() => {
+                    location.reload(); // Restart game
+                }, 3000);
+            });
+        }
+
+        function hideConnectionScreen() {
+            console.log('DEBUG: Hiding connection screen');
+            // Try multiple ways to find and hide the overlay
+            const overlay1 = document.getElementById('connection-overlay');
+            const overlay2 = document.querySelector('#connection-overlay');
+            const overlay3 = document.body.querySelector('div[style*="z-index: 1000"]');
+            
+            if (overlay1) {
+                console.log('DEBUG: Found overlay by ID');
+                overlay1.style.display = 'none';
+            } else if (overlay2) {
+                console.log('DEBUG: Found overlay by querySelector');
+                overlay2.style.display = 'none';
+            } else if (overlay3) {
+                console.log('DEBUG: Found overlay by style');
+                overlay3.style.display = 'none';
+            } else {
+                console.log('DEBUG: Could not find overlay, hiding all potential overlays');
+                // Hide any element that might be an overlay
+                const overlays = document.querySelectorAll('div');
+                overlays.forEach(el => {
+                    if (el.style.zIndex === '1000' || el.innerHTML.includes('Start 3-Player Game')) {
+                        el.style.display = 'none';
+                    }
+                });
+            }
+            
+            statusBarEl.style.display = 'block';
+            gameControlsEl.style.display = 'flex';
+        }
+
+        function showStatus(message, type = 'info') {
+            let bgColor, color;
+            switch(type) {
+                case 'success':
+                    bgColor = '#d4edda';
+                    color = '#155724';
+                    break;
+                case 'error':
+                    bgColor = '#f8d7da';
+                    color = '#721c24';
+                    break;
+                default:
+                    bgColor = '#d1ecf1';
+                    color = '#0c5460';
+            }
+            
+            statusBarEl.style.background = bgColor;
+            statusBarEl.style.color = color;
+            statusBarEl.textContent = message;
+            statusBarEl.style.display = 'block';
+            
+            // Auto-hide after 3 seconds
+            setTimeout(() => {
+                statusBarEl.style.display = 'none';
+            }, 3000);
+        }
+
+        function showGameControls() {
+            gameControlsEl.style.display = 'flex';
+        }
+
+        function renderGameBoard() {
+            const playerCount = currentGameState.players.length;
+            
+            // Show/hide right player for 4-player games
+            if (playerCount === 4) {
+                document.getElementById('player-right').style.display = 'block';
+            } else {
+                document.getElementById('player-right').style.display = 'none';
+            }
+            
+            // Assign players to positions
+            assignPlayersToPositions();
+        }
+
+        function assignPlayersToPositions() {
+            const players = currentGameState.players;
+            const playerCount = players.length;
+            
+            // Find human player index
+            const humanIndex = players.findIndex(p => p.id === myPlayerId);
+            
+            if (playerCount === 3) {
+                // 3-player: Human at bottom, AI at top and left
+                updatePlayerPosition('bottom', players[humanIndex]);
+                updatePlayerPosition('top', players[(humanIndex + 1) % 3]);
+                updatePlayerPosition('left', players[(humanIndex + 2) % 3]);
+            } else if (playerCount === 4) {
+                // 4-player: Human at bottom, AI at top, left, right
+                updatePlayerPosition('bottom', players[humanIndex]);
+                updatePlayerPosition('top', players[(humanIndex + 2) % 4]);
+                updatePlayerPosition('left', players[(humanIndex + 1) % 4]);
+                updatePlayerPosition('right', players[(humanIndex + 3) % 4]);
+            }
+        }
+
+        function updatePlayerPosition(position, player) {
+            const pos = playerPositions[position];
+            pos.info.textContent = player.name + (player.isAI ? ' (AI)' : '');
+            
+            // Clear existing cards
+            pos.hand.innerHTML = '';
+            
+            // Get player's hand
+            const hand = currentGameState.playerHands[player.id] || [];
+            
+            if (position === 'bottom') {
+                // Human player - show actual cards
+                hand.forEach(card => {
+                    const cardEl = createCardElement(card);
+                    cardEl.addEventListener('click', () => toggleCardSelection(cardEl, card));
+                    pos.hand.appendChild(cardEl);
+                });
+            } else {
+                // AI players - show faced down cards
+                for (let i = 0; i < hand.length; i++) {
+                    const cardEl = createAICardElement(hand.length);
+                    pos.hand.appendChild(cardEl);
+                }
+            }
+            
+            // Highlight current player
+            const isCurrentPlayer = player.id === currentGameState.currentPlayerId;
+            const playerInfoEl = pos.info.closest('.player-position');
+            if (isCurrentPlayer) {
+                playerInfoEl.classList.add('current-player');
+            } else {
+                playerInfoEl.classList.remove('current-player');
+            }
+        }
+
+        function createCardElement(card) {
+            const cardEl = document.createElement('div');
+            cardEl.className = 'card';
+            
+            const suits = ['♥', '♦', '♣', '♠'];
+            const ranks = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+            
+            const suit = suits[card.suit];
+            const rank = ranks[card.rank];
+            
+            cardEl.textContent = `${suit}${rank}`;
+            cardEl.dataset.suit = card.suit;
+            cardEl.dataset.rank = card.rank;
+            
+            if (card.suit === 0 || card.suit === 1) { // Hearts or Diamonds
+                cardEl.classList.add('suit-heart');
+            } else { // Clubs or Spades
+                cardEl.classList.add('suit-spade');
+            }
+            
+            return cardEl;
+        }
+
+        function createAICardElement(totalCards) {
+            const cardEl = document.createElement('div');
+            cardEl.className = 'ai-card';
+            cardEl.textContent = `${totalCards}`;
+            return cardEl;
+        }
+
+        function toggleCardSelection(cardEl, card) {
+            const cardKey = `${card.suit}-${card.rank}`;
+            
+            if (selectedCards.has(cardKey)) {
+                selectedCards.delete(cardKey);
+                cardEl.classList.remove('selected');
+            } else {
+                selectedCards.add(cardKey);
+                cardEl.classList.add('selected');
+            }
+            
+            // Enable/disable play button based on selection
+            playBtn.disabled = selectedCards.size === 0;
+        }
+
+        function updateGameDisplay() {
+            if (!currentGameState) return;
+            
+            // Update current turn
+            const currentPlayer = currentGameState.players.find(p => p.id === currentGameState.currentPlayerId);
+            if (currentPlayer) {
+                currentTurnEl.textContent = `Current Turn: ${currentPlayer.name}`;
+                currentTurnEl.style.color = currentPlayer.id === myPlayerId ? '#ffeb3b' : 'white';
+            }
+            
+            // Update player positions
+            assignPlayersToPositions();
+            
+            // Update played cards (simplified - would need game logic for actual played cards)
+            // For now, just clear it
+            playedCardsEl.innerHTML = '';
+            
+            // Update controls based on current turn
+            const isMyTurn = currentGameState.currentPlayerId === myPlayerId;
+            playBtn.disabled = selectedCards.size === 0 || !isMyTurn;
+            passBtn.disabled = !isMyTurn;
+        }
+
+        function generateId() {
+            return Math.random().toString(36).substr(2, 9);
+        }
+
+        // Handle play button click
+        playBtn.addEventListener('click', function() {
+            if (selectedCards.size === 0) return;
+            
+            // Convert selected cards back to card objects
+            const selectedCardArray = Array.from(selectedCards).map(key => {
+                const [suit, rank] = key.split('-').map(Number);
+                return { suit, rank };
+            });
+            
+            // Send play action
+            stompClient.send('/app/game/play', {}, JSON.stringify({
+                gameId: currentGameState.gameId,
+                playerId: myPlayerId,
+                cards: selectedCardArray
+            }));
+            
+            // Clear selection
+            selectedCards.clear();
+            document.querySelectorAll('.card.selected').forEach(card => {
+                card.classList.remove('selected');
+            });
+            playBtn.disabled = true;
+        });
+
+        // Handle pass button click
+        passBtn.addEventListener('click', function() {
+            // In Pao De Kuai, passing might not be allowed in all situations
+            // This would need proper game rule implementation
+            showStatus('Pass action would be implemented with full game rules', 'info');
+        });
+        
+        // Initialize connection screen when page loads
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', showConnectionScreen);
+        } else {
+            showConnectionScreen();
+        }
+    </script>
+</body>
+</html>

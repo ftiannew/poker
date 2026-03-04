@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Manual Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+</head>
+<body>
+    <h1>Manual Test - Direct Game Start</h1>
+    <button onclick="start3PlayerGame()">Start 3-Player Game</button>
+    <button onclick="start4PlayerGame()">Start 4-Player Game</button>
+    <div id="output"></div>
+
+    <script>
+        function start3PlayerGame() {
+            const output = document.getElementById('output');
+            output.innerHTML = 'Connecting...';
+            
+            const socket = new SockJS('http://localhost:8082/game');
+            const stompClient = Stomp.over(socket);
+            
+            stompClient.connect({}, function(frame) {
+                output.innerHTML += '<br>✅ Connected!';
+                
+                // Create players
+                const players = [
+                    {id: 'human-' + Math.random().toString(36).substr(2, 9), name: 'Human Test'},
+                    {id: 'ai-1-' + Math.random().toString(36).substr(2, 9), name: 'AI Player 1'},
+                    {id: 'ai-2-' + Math.random().toString(36).substr(2, 9), name: 'AI Player 2'}
+                ];
+                
+                // Subscribe to game started
+                stompClient.subscribe('/topic/game.started', function(message) {
+                    const gameState = JSON.parse(message.body);
+                    output.innerHTML += '<br>✅ Game started with ' + gameState.players.length + ' players';
+                    output.innerHTML += '<br>Player hands:';
+                    gameState.players.forEach(player => {
+                        const handSize = gameState.playerHands[player.id]?.length || 0;
+                        output.innerHTML += '<br>- ' + player.name + ': ' + handSize + ' cards';
+                    });
+                });
+                
+                // Start direct game
+                stompClient.send('/app/game/start-direct', {}, JSON.stringify({players: players}));
+                
+            }, function(error) {
+                output.innerHTML += '<br>❌ Connection failed: ' + error;
+            });
+        }
+        
+        function start4PlayerGame() {
+            const output = document.getElementById('output');
+            output.innerHTML = 'Connecting...';
+            
+            const socket = new SockJS('http://localhost:8082/game');
+            const stompClient = Stomp.over(socket);
+            
+            stompClient.connect({}, function(frame) {
+                output.innerHTML += '<br>✅ Connected!';
+                
+                // Create players
+                const players = [
+                    {id: 'human-' + Math.random().toString(36).substr(2, 9), name: 'Human Test'},
+                    {id: 'ai-1-' + Math.random().toString(36).substr(2, 9), name: 'AI Player 1'},
+                    {id: 'ai-2-' + Math.random().toString(36).substr(2, 9), name: 'AI Player 2'},
+                    {id: 'ai-3-' + Math.random().toString(36).substr(2, 9), name: 'AI Player 3'}
+                ];
+                
+                // Subscribe to game started
+                stompClient.subscribe('/topic/game.started', function(message) {
+                    const gameState = JSON.parse(message.body);
+                    output.innerHTML += '<br>✅ Game started with ' + gameState.players.length + ' players';
+                    output.innerHTML += '<br>Player hands:';
+                    gameState.players.forEach(player => {
+                        const handSize = gameState.playerHands[player.id]?.length || 0;
+                        output.innerHTML += '<br>- ' + player.name + ': ' + handSize + ' cards';
+                    });
+                });
+                
+                // Start direct game
+                stompClient.send('/app/game/start-direct', {}, JSON.stringify({players: players}));
+                
+            }, function(error) {
+                output.innerHTML += '<br>❌ Connection failed: ' + error;
+            });
+        }
+    </script>
+</body>
+</html>

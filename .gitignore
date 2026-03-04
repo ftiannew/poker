@@ -1,0 +1,17 @@
+# Build
+target/
+*.jar
+
+# IDE
+.classpath
+.project
+.settings/
+.idea/
+*.iml
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db

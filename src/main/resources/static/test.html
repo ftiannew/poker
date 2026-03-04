@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Pao De Kuai Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+</head>
+<body>
+    <h1>Pao De Kuai Backend Test</h1>
+    <div>
+        <label>Server IP Address:</label>
+        <input type="text" id="server-ip" placeholder="Leave blank for current host">
+        <small>Example: 192.168.1.100</small>
+    </div>
+    <button onclick="test3PlayerGame()">Test 3-Player Game (Human + 2 AI)</button>
+    <button onclick="test4PlayerGame()">Test 4-Player Game (Human + 3 AI)</button>
+    <div id="output"></div>
+
+    <script>
+        function test3PlayerGame() {
+            startGame(2, '3-player-test');
+        }
+        
+        function test4PlayerGame() {
+            startGame(3, '4-player-test');
+        }
+        
+        function startGame(aiCount, testName) {
+            const output = document.getElementById('output');
+            output.innerHTML = `Creating ${aiCount+1}-player game...`;
+            
+            const serverIp = document.getElementById('server-ip').value.trim();
+            const backendUrl = serverIp ? serverIp + ':8081' : window.location.hostname + ':8081';
+            const websocketUrl = 'http://' + backendUrl + '/game';
+            
+            try {
+                const socket = new SockJS(websocketUrl);
+                const stompClient = Stomp.over(socket);
+                
+                stompClient.connect({}, function(frame) {
+                    output.innerHTML += '<br>✅ Connected successfully!';
+                    
+                    // Create game
+                    stompClient.send('/app/game/create', {}, testName);
+                    
+                    let gameId = null;
+                    
+                    stompClient.subscribe('/topic/game.created', function(message) {
+                        const gameState = JSON.parse(message.body);
+                        gameId = gameState.gameId;
+                        output.innerHTML += `<br>✅ Game created: ${gameId}`;
+                        
+                        // Add players (human + AI)
+                        const players = [];
+                        players.push({ id: 'human-' + generateId(), name: 'Human Player' });
+                        
+                        for (let i = 1; i <= aiCount; i++) {
+                            players.push({
+                                id: 'ai-' + i + '-' + generateId(),
+                                name: `AI Player ${i}`,
+                                isAI: true
+                            });
+                        }
+                        
+                        // Add all players
+                        players.forEach(player => {
+                            stompClient.send('/app/game/join', {}, JSON.stringify({gameId: gameId, player: player}));
+                        });
+                        
+                        output.innerHTML += `<br>✅ ${players.length} players added, starting game...`;
+                        
+                        // Start game after delay
+                        setTimeout(() => {
+                            stompClient.send('/app/game/start', {}, gameId);
+                        }, 200);
+                    });
+                    
+                    stompClient.subscribe('/topic/game.started', function(message) {
+                        const gameState = JSON.parse(message.body);
+                        output.innerHTML += '<br>✅ Game started successfully!';
+                        output.innerHTML += `<br>Players: ${gameState.players.length}`;
+                        output.innerHTML += `<br>Player hands:`;
+                        gameState.players.forEach(player => {
+                            const handSize = gameState.playerHands[player.id]?.length || 0;
+                            const playerType = player.isAI ? ' (AI)' : ' (Human)';
+                            output.innerHTML += `<br>- ${player.name}${playerType}: ${handSize} cards`;
+                        });
+                        
+                        // Verify card distribution
+                        if (gameState.players.length === 3) {
+                            const allHandSizes = gameState.players.map(p => gameState.playerHands[p.id].length);
+                            const uniqueSizes = new Set(allHandSizes);
+                            if (uniqueSizes.size === 1 && allHandSizes[0] === 17) {
+                                output.innerHTML += '<br>✅ 3-player card distribution CORRECT (17 cards each)';
+                            } else {
+                                output.innerHTML += '<br>❌ 3-player card distribution INCORRECT';
+                            }
+                        } else if (gameState.players.length === 4) {
+                            const allHandSizes = gameState.players.map(p => gameState.playerHands[p.id].length);
+                            const uniqueSizes = new Set(allHandSizes);
+                            if (uniqueSizes.size === 1 && allHandSizes[0] === 13) {
+                                output.innerHTML += '<br>✅ 4-player card distribution CORRECT (13 cards each)';
+                            } else {
+                                output.innerHTML += '<br>❌ 4-player card distribution INCORRECT';
+                            }
+                        }
+                    });
+                    
+                }, function(error) {
+                    output.innerHTML += '<br>❌ Connection failed: ' + error;
+                });
+            } catch (e) {
+                output.innerHTML += '<br>❌ Error: ' + e.message;
+            }
+        }
+        
+        function generateId() {
+            return Math.random().toString(36).substr(2, 9);
+        }
+    </script>
+</body>
+</html>

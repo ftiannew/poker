@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>3-Player Game Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        .player { 
+            margin: 10px 0; 
+            padding: 10px; 
+            border: 1px solid #ccc; 
+            border-radius: 5px; 
+            background-color: #f9f9f9;
+        }
+        .hand { 
+            display: flex; 
+            flex-wrap: wrap; 
+            gap: 2px; 
+            margin-top: 5px; 
+        }
+        .card { 
+            padding: 2px 6px; 
+            background-color: white; 
+            border: 1px solid #ddd; 
+            border-radius: 3px; 
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>3-Player Game Verification Test</h1>
+    
+    <div class="status info" id="status">Ready to test 3-player game...</div>
+    
+    <button onclick="start3PlayerGame()">Start 3-Player Game (Human + 2 AI)</button>
+    
+    <div id="game-area" style="display: none;">
+        <h2>Game in Progress</h2>
+        <div id="current-turn"></div>
+        <div id="players-container"></div>
+    </div>
+
+    <script>
+        let stompClient = null;
+        let currentGameState = null;
+
+        function start3PlayerGame() {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = 'status info';
+            statusDiv.innerHTML = 'Connecting to server...';
+            
+            // Connect to WebSocket
+            const socket = new SockJS('http://localhost:8082/game');
+            stompClient = Stomp.over(socket);
+            
+            stompClient.connect({}, function(frame) {
+                statusDiv.innerHTML = 'Connected! Starting 3-player game...';
+                
+                // Subscribe to game events
+                stompClient.subscribe('/topic/game.started', function(message) {
+                    currentGameState = JSON.parse(message.body);
+                    statusDiv.className = 'status success';
+                    statusDiv.innerHTML = '✅ Game started successfully!';
+                    
+                    // Show game area
+                    document.getElementById('game-area').style.display = 'block';
+                    updateGameDisplay();
+                    
+                    // Verify 3 players with 17 cards each
+                    verifyCardDealing();
+                });
+                
+                stompClient.subscribe('/topic/game.updated', function(message) {
+                    currentGameState = JSON.parse(message.body);
+                    updateGameDisplay();
+                });
+                
+                // Create players for 3-player game
+                const players = [
+                    {id: 'human-' + generateId(), name: 'Human Test Player'},
+                    {id: 'ai-1-' + generateId(), name: 'AI Player 1'},
+                    {id: 'ai-2-' + generateId(), name: 'AI Player 2'}
+                ];
+                
+                // Send direct start game request
+                stompClient.send('/app/game/start-direct', {}, JSON.stringify(players));
+                
+            }, function(error) {
+                statusDiv.className = 'status error';
+                statusDiv.innerHTML = '❌ Connection failed: ' + error;
+            });
+        }
+
+        function updateGameDisplay() {
+            if (!currentGameState) return;
+            
+            // Update current turn
+            const currentPlayer = currentGameState.players.find(p => p.id === currentGameState.currentPlayerId);
+            document.getElementById('current-turn').innerHTML = 
+                `<strong>Current Turn:</strong> ${currentPlayer?.name || 'Unknown'}`;
+            
+            // Update players and their hands
+            const playersContainer = document.getElementById('players-container');
+            playersContainer.innerHTML = '';
+            
+            currentGameState.players.forEach(player => {
+                const playerDiv = document.createElement('div');
+                playerDiv.className = 'player';
+                if (player.id === currentGameState.currentPlayerId) {
+                    playerDiv.style.backgroundColor = '#e3f2fd';
+                    playerDiv.style.border = '2px solid #2196f3';
+                }
+                
+                const hand = currentGameState.playerHands[player.id] || [];
+                const handHtml = hand.map(card => {
+                    const suits = ['♥', '♦', '♣', '♠'];
+                    const ranks = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+                    return `<span class="card">${suits[card.suit]}${ranks[card.rank]}</span>`;
+                }).join('');
+                
+                const playerType = player.name.includes('AI') ? ' (AI)' : '';
+                playerDiv.innerHTML = `
+                    <strong>${player.name}${playerType}</strong> (${hand.length} cards)
+                    <div class="hand">${handHtml}</div>
+                `;
+                playersContainer.appendChild(playerDiv);
+            });
+        }
+
+        function verifyCardDealing() {
+            if (!currentGameState) return;
+            
+            const verificationResults = [];
+            let allCorrect = true;
+            
+            // Check number of players
+            if (currentGameState.players.length === 3) {
+                verificationResults.push('✅ 3 players created');
+            } else {
+                verificationResults.push(`❌ Expected 3 players, got ${currentGameState.players.length}`);
+                allCorrect = false;
+            }
+            
+            // Check card counts
+            currentGameState.players.forEach(player => {
+                const handSize = currentGameState.playerHands[player.id]?.length || 0;
+                if (handSize === 17) {
+                    verificationResults.push(`✅ ${player.name}: 17 cards`);
+                } else {
+                    verificationResults.push(`❌ ${player.name}: ${handSize} cards (expected 17)`);
+                    allCorrect = false;
+                }
+            });
+            
+            // Check total cards
+            const totalCards = Object.values(currentGameState.playerHands)
+                .reduce((sum, hand) => sum + (hand?.length || 0), 0);
+            if (totalCards === 51) {
+                verificationResults.push('✅ Total cards: 51 (Spade 2 removed for 3-player game)');
+            } else {
+                verificationResults.push(`❌ Total cards: ${totalCards} (expected 51)`);
+                allCorrect = false;
+            }
+            
+            // Display verification results
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = allCorrect ? 'status success' : 'status error';
+            statusDiv.innerHTML = verificationResults.join('<br>');
+            
+            if (allCorrect) {
+                console.log('🎉 3-PLAYER GAME VERIFICATION PASSED!');
+                console.log('✅ Human + 2 AI players created');
+                console.log('✅ Each player has exactly 17 cards');
+                console.log('✅ Total cards: 51 (Spade 2 properly removed)');
+                console.log('✅ Pao De Kuai rules correctly implemented');
+            }
+        }
+
+        function generateId() {
+            return Math.random().toString(36).substr(2, 9);
+        }
+    </script>
+</body>
+</html>
