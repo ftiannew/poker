@@ -101,8 +101,9 @@ public class GameController {
             String firstPlayerId = findPlayerWithDiamond3(gameState);
             gameState.setCurrentPlayerId(firstPlayerId);
             
-            // Broadcast game started
+            // Broadcast game started (both game-specific and legacy global topics)
             messagingTemplate.convertAndSend("/topic/game/" + gameId + "/started", gameState);
+            messagingTemplate.convertAndSend("/topic/game.started", gameState);
             
         } catch (Exception e) {
             logger.error("Error in startDirectGame: {}", e.getMessage(), e);
@@ -163,6 +164,7 @@ public class GameController {
             if (ruleValidator.isWinningCondition(playerHand)) {
                 gameState.setGameOver(true);
                 messagingTemplate.convertAndSend("/topic/game/" + gameId + "/ended", playerId);
+                messagingTemplate.convertAndSend("/topic/game.ended", playerId);
                 gameService.removeGame(gameId);
                 return;
             }
@@ -180,8 +182,9 @@ public class GameController {
             String nextPlayerId = gameState.getPlayers().get(nextIndex).getId();
             gameState.setCurrentPlayerId(nextPlayerId);
             
-            // Broadcast updated game state
+            // Broadcast updated game state (both game-specific and legacy global topics)
             messagingTemplate.convertAndSend("/topic/game/" + gameId + "/updated", gameState);
+            messagingTemplate.convertAndSend("/topic/game.updated", gameState);
             
         } catch (Exception e) {
             logger.error("Error in playCards: {}", e.getMessage(), e);
